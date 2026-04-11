@@ -6,8 +6,8 @@ import ujson
 from umqtt import *
 
 # --- Configuration ---
-WIFI_SSID = ""
-WIFI_PASS = ""
+WIFI_SSID = "coolhandbob"
+WIFI_PASS = "myboyblue599a"
 MQTT_CLIENTID = "BobsDoorBellMonitor"
 MQTT_BROKER = "192.168.86.22" # Windows PC IP
 MQTT_TOPIC_ENV = "BobsDoorBell/env_data"
@@ -38,12 +38,14 @@ def mqtt_MyTestTopicEnv_event(msg):
       full_time = payload.get("timestamp", "--:--")
       env_data["time"] = full_time.split(" ")[1] if " " in full_time else full_time
         
-      draw_ui()
+      #draw_ui(); only populate UI at 30 second intervials inorder to avoid race condition.
     except:
         pass
 
 def draw_ui():
-    M5.Lcd.clear()
+    M5.Lcd.fillScreen(0) # Use fillScreen(0) instead of clear()
+    M5.Lcd.setCursor(0, 10)
+    #M5.Lcd.clear()
     M5.Lcd.setCursor(0, 10)
     M5.Lcd.setTextSize(2)
     
@@ -83,7 +85,13 @@ def connect_mqtt():
 
 # --- Start ---
 if __name__ == '__main__':
+  
+  last_ping = time.ticks_ms()
+
   try:
+  
+
+
     M5.begin()
     connect_wifi()
 
@@ -93,13 +101,30 @@ if __name__ == '__main__':
     while True:
       M5.update()
         # IMPORTANT: This triggers the callback when data arrives
-      mqtt_client.check_msg() 
+      try:
+        mqtt_client.check_msg()
+        
+        # Manually send a ping every 60 seconds
+        if time.ticks_diff(time.ticks_ms(), last_ping) > 60000:
+            mqtt_client.ping()
+            last_ping = time.ticks_ms()
+            print("Keep-alive ping sent")
+              
+      except Exception as e:
+        print("MQTT Error, attempting reconnect...")
+        connect_mqtt() # Use your existing connect function 
+      
       # Check for the screen press (mechanical click)
       if M5.BtnA.wasPressed():
         display_mode = (display_mode + 1) % 4
         draw_ui()
+      
+      # OPTIONAL: Redraw every 5 seconds to ensure data is fresh
+      # even if you don't press the button
+      if time.ticks_ms() % 5000 < 100: 
+        draw_ui()
         
-    time.sleep(0.1)
+      time.sleep(0.1)
   except (Exception, KeyboardInterrupt) as e:
     try:
       from utility import print_error_msg
@@ -111,3 +136,30 @@ if __name__ == '__main__':
 
 
 
+last_ping = time.ticks_ms()
+
+while True:
+    M5.update()
+    
+    try:
+        mqtt_client.check_msg()
+        
+        # Manually send a ping every 60 seconds
+        if time.ticks_diff(time.ticks_ms(), last_ping) > 60000:
+            mqtt_client.ping()
+            last_ping = time.ticks_ms()
+            print("Keep-alive ping sent")
+            
+    except Exception as e:
+        print("MQTT Error, attempting reconnect...")
+        connect_mqtt() # Use your existing connect function
+    
+    if M5.BtnA.wasPressed():
+        display_mode = (display_mode + 1) % 4
+        needs_redraw = True
+
+    if needs_redraw:
+        draw_ui()
+        needs_redraw = False
+        
+    time.sleep(0.1)
