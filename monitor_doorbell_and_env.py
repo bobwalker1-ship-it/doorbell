@@ -5,8 +5,8 @@ import time
 import ujson
 from umqtt import *
 #-- Configuration ---
-WIFI_SSID = "coolhandbob"
-WIFI_PASS = "myboyblue599a"
+WIFI_SSID = ""
+WIFI_PASS = ""
 MQTT_CLIENTID = "BobsDoorBellMonitorEnv"
 MQTT_BROKER = "192.168.86.22" # Windows PC IP
 MQTT_TOPIC_ENV = "BobsDoorBell/env_data"
